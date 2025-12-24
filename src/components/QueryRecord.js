@@ -3,6 +3,11 @@ import { ethers } from 'ethers';
 import { db } from '../firebaseConfig';
 import { doc, getDoc } from 'firebase/firestore'; 
 import { CONTRACT_ADDRESS, CONTRACT_ABI } from '../scConfig';
+// 1. 引入加密库
+import CryptoJS from 'crypto-js';
+
+// 必须和 AddRecord.js 里的密钥完全一致
+const SECRET_KEY = "my-secret-key-123";
 
 const QueryRecord = () => {
     const [targetPatient, setTargetPatient] = useState('');
@@ -38,20 +43,40 @@ const QueryRecord = () => {
                 let displayData = "Unable to read data";
                 
                 if (docSnap.exists()) {
-                    const rawData = docSnap.data().encryptedData;
+                    const encryptedContent = docSnap.data().encryptedData;
+                    
+                    // --- 核心修改：解密过程 ---
                     try {
-                        const parsed = JSON.parse(rawData);
-                        // 格式化显示的详细数据
-                        displayData = `Blood Type: ${parsed.bloodType} | Vol: ${parsed.volume} | BP: ${parsed.bloodPressure} | Notes: ${parsed.notes || parsed.doctorNotes}`;
+                        // 1. 尝试解密
+                        const bytes = CryptoJS.AES.decrypt(encryptedContent, SECRET_KEY);
+                        const decryptedString = bytes.toString(CryptoJS.enc.Utf8);
+
+                        // 2. 如果解密出的字符串是空的，说明密钥不对或者数据没加密
+                        if (!decryptedString) {
+                            // 兼容处理：可能这是一条旧数据，没有加密，直接显示原文
+                            throw new Error("Old data"); 
+                        }
+
+                        // 3. 解析 JSON
+                        const parsed = JSON.parse(decryptedString);
+                        
+                        // 4. 格式化显示
+                        displayData = `Blood Type: ${parsed.bloodType} | Vol: ${parsed.quantity} | BP: ${parsed.bloodPressure} | Notes: ${parsed.notes || parsed.doctorNotes}`;
                     } catch (e) {
-                        displayData = rawData;
+                        // 如果解密失败（比如是旧数据），尝试直接按照旧数据解析
+                        try {
+                            const parsed = JSON.parse(encryptedContent);
+                            displayData = `(Unencrypted) Blood Type: ${parsed.bloodType} | Vol: ${parsed.quantity} | BP: ${parsed.bloodPressure} | Notes: ${parsed.notes || parsed.doctorNotes}`;
+                        } catch (e2) {
+                             displayData = "Encrypted Data (Cannot Decrypt)";
+                        }
                     }
                 }
 
                 fullRecords.push({
                     type: item.recordType,
                     location: item.location,
-                    doctor: item.doctor, // <--- 确保这里取到了合约里的医生地址
+                    doctor: item.doctor, 
                     timestamp: new Date(timestampNum * 1000).toLocaleString(),
                     details: displayData
                 });
@@ -96,19 +121,16 @@ const QueryRecord = () => {
                 {records.map((rec, index) => (
                     <div key={index} style={{ border: '1px solid #eee', background: '#f9f9f9', padding: '15px', marginBottom: '15px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
                         
-                        {/* 头部：类型和时间 */}
                         <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #ddd', paddingBottom: '10px', marginBottom: '10px' }}>
                             <span style={{ fontWeight: 'bold', fontSize: '16px', color: '#0050b3' }}>{rec.type}</span>
                             <span style={{ color: '#888', fontSize: '14px' }}>📅 {rec.timestamp}</span>
                         </div>
 
-                        {/* 中部：基础信息 (地点和医生) - 这里加回来了 */}
                         <div style={{ fontSize: '14px', color: '#555', marginBottom: '10px', lineHeight: '1.6' }}>
                             <div><strong>📍 Location:</strong> {rec.location}</div>
                             <div><strong>👨‍⚕️ Doctor:</strong> <span style={{ fontFamily: 'monospace', background: '#e6f7ff', padding: '2px 4px', borderRadius: '3px' }}>{rec.doctor}</span></div>
                         </div>
 
-                        {/* 底部：详细医疗数据 */}
                         <div style={{ background: '#fff', padding: '10px', border: '1px solid #e6e6e6', borderRadius: '4px', fontSize: '14px', color: '#333', borderLeft: '4px solid #52c41a' }}>
                             <strong>📄 Details:</strong><br/>
                             {rec.details}
