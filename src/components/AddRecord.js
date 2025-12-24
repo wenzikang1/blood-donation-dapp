@@ -3,6 +3,11 @@ import { db } from '../firebaseConfig';
 import { collection, addDoc, updateDoc } from 'firebase/firestore';
 import { ethers } from 'ethers';
 import { CONTRACT_ADDRESS, CONTRACT_ABI } from '../scConfig';
+// 1. 引入加密库
+import CryptoJS from 'crypto-js';
+
+// 定义加密密钥 (在真实生产环境中，这个应该放在 .env 文件里，例如 process.env.REACT_APP_SECRET_KEY)
+const SECRET_KEY = "my-secret-key-123"; 
 
 const AddRecord = () => {
     const [patientAddr, setPatientAddr] = useState('');
@@ -35,7 +40,15 @@ const AddRecord = () => {
                 bloodPressure,
                 notes
             };
-            const encryptedString = JSON.stringify(medicalDataObject);
+            
+            // --- 核心修改：加密过程 ---
+            // 1. 先转成字符串
+            const dataString = JSON.stringify(medicalDataObject);
+            // 2. 使用 AES 加密
+            const encryptedData = CryptoJS.AES.encrypt(dataString, SECRET_KEY).toString();
+            
+            console.log("Original:", dataString);
+            console.log("Encrypted:", encryptedData); // 控制台会打印出乱码，说明加密成功
 
             const timestamp = Math.floor(Date.now() / 1000);
 
@@ -45,7 +58,7 @@ const AddRecord = () => {
                 recordType,
                 location,
                 timestamp,
-                encryptedData: encryptedString,
+                encryptedData: encryptedData, // 这里存入的是乱码 (例如: U2FsdGVkX1...)
                 dataHash: "pending..."
             };
 
@@ -63,7 +76,7 @@ const AddRecord = () => {
             setStatus('Waiting for blockchain confirmation...');
             await tx.wait();
 
-            setStatus('✅ Success! Record uploaded and indexed.');
+            setStatus('✅ Success! Encrypted record uploaded and indexed.');
             // Reset form
             setBloodPressure('');
             setNotes('');
