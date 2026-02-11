@@ -113,6 +113,19 @@ npm start
 
 ---
 
+## 📚 参考文献验证 (Reference Verification)
+
+本仓库包含对15篇学术参考文献的DOI和期刊信息验证结果。查看详细信息：
+
+*   **[参考文献核查结果.md](./参考文献核查结果.md)** - 中文简要摘要（推荐）
+*   **[REFERENCES_README.md](./REFERENCES_README.md)** - 完整使用指南
+*   **[CORRECTED_REFERENCES.md](./CORRECTED_REFERENCES.md)** - 更正后的文献列表
+*   **[REFERENCES_VERIFICATION.md](./REFERENCES_VERIFICATION.md)** - 详细验证报告
+
+**核查摘要：** 15篇文献中，13篇完全正确，1篇需要更正年份（文献[2]: 2021→2019），1篇无法验证（文献[9]）。
+
+---
+
 ## 👥 作者 (Author)
 
 *   **wenzikang1** - [GitHub Profile](https://github.com/wenzikang1)
